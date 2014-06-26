@@ -1,0 +1,87 @@
+import com.android.builder.SdkParser
+import com.android.builder.testing.ConnectedDeviceProvider
+import com.android.builder.testing.api.DeviceConnector
+
+evaluationDependsOn(':core')
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.9.+'
+    }
+}
+apply plugin: 'android'
+
+repositories {
+    mavenCentral()
+}
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion "19.1.0"
+
+    defaultConfig {
+        minSdkVersion 8
+        targetSdkVersion 19
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "com.google.android.apps.common.testing.testrunner.GoogleInstrumentationTestRunner"
+    }
+
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/ASL2.0'
+    }
+
+    deviceProvider new GenymotionDeviceProvider(project.plugins.findPlugin('android').getSdkParser())
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android'), 'proguard-rules'
+        }
+    }
+}
+
+dependencies {
+    compile 'com.android.support:appcompat-v7:19.1.0'
+    compile project(':core')
+
+    androidTestCompile('com.jakewharton.espresso:espresso:1.1-r3')
+}
+
+class GenymotionDeviceProvider extends ConnectedDeviceProvider {
+    GenymotionDeviceProvider(SdkParser sdkParser) {
+        super(sdkParser)
+    }
+
+    public String getName() {
+        return "genymotion" // Run with 'gradle genymotionInstrumentTest'
+    }
+
+    public List<? extends DeviceConnector> getDevices() {
+        List localDevices = super.getDevices()
+        def matchingDevices = localDevices.grep {
+            it.getApiLevel() > 16 &&
+                    it.iDevice.getProperty("ro.product.manufacturer") == 'Genymotion'
+        }
+
+        if (matchingDevices.size() == 0) {
+            throw new IllegalArgumentException("Couldn't find any connected device that matches [${getName()}] provider.")
+        }
+        matchingDevices
+    }
+}
